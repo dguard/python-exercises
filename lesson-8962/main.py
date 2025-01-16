@@ -3,10 +3,14 @@ import hashlib
 
 class User:
 
-    def __init__(self, nickname, password, age):
+    def __init__(self, nickname, password, age, salt):
         self.nickname = nickname
         self.password = password
         self.age = age
+        self.salt = salt
+
+    def __repr__(self):
+        return self.nickname
 
 class Video:
 
@@ -15,6 +19,9 @@ class Video:
         self.duration = duration
         self.adult_mode = adult_mode
         self.time_now = time_now
+
+    def __repr__(self):
+        return self.title
 
     def __str__(self):
         return self.title
@@ -39,11 +46,11 @@ class UrTube:
             pass
         else:
             print("Пользователь не найден")
-        salt = self.data[nickname]['salt']
+        salt = self.data[nickname].salt
 
-        if self.data[nickname]['password'] == hashlib.sha512(password.encode('utf-8') + salt.encode('utf-8')).hexdigest():
-            self.current_user = nickname
-            print(f"Добро пожаловать, {nickname}")
+        if self.data[nickname].password == hashlib.sha512(password.encode('utf-8') + salt.encode('utf-8')).hexdigest():
+            self.current_user = self.data[nickname]
+            print(f"Добро пожаловать, {self.current_user.nickname}")
         else:
             print("Неверный пароль")
 
@@ -61,14 +68,24 @@ class UrTube:
         salt = uuid.uuid4().hex
         hashed_password = hashlib.sha512(password.encode('utf-8') + salt.encode('utf-8')).hexdigest()
 
-        self.users.append(User(nickname, hashed_password, age))
-        self.data[nickname] = {'password': hashed_password, 'salt': salt, 'age': age}
+        user = User(nickname, hashed_password, age, salt)
+        self.users.append(user)
+        self.data[nickname] = user
 
     def logout(self):
-        pass
+        self.current_user = None
 
     def add(self, *args):
-        self.videos.extend(args)
+        titles = set()
+        for video in self.videos:
+            titles.add(video.title)
+
+        for video in args:
+            if video.title in titles:
+                pass
+            else:
+                self.videos.extend([video])
+                titles.add(video.title)
 
     def get_videos(self, title):
         found = []
@@ -86,7 +103,7 @@ class UrTube:
 
         for video in self.videos:
             if movie_name == video.title:
-                if video.adult_mode and self.data[self.current_user]['age'] >= 18:
+                if video.adult_mode and self.data[self.current_user.nickname].age >= 18:
                     pass
                 elif video.adult_mode == False:
                     pass
@@ -95,8 +112,10 @@ class UrTube:
                     return
                 for i in range(10):
                     sleep(1)
+                    video.time_now += 1
                     print(f"{i+1}", end=" ")
                     if (i+1) == 10:
+                        video.time_now = 0
                         print(" Конец видео")
                 return
         # print("Видео не найдено")
